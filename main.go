@@ -7,12 +7,12 @@ import (
 	"github.com/golang/glog"
 	"github.com/lainio/err2"
 	"github.com/lainio/err2/try"
-	pb "github.com/nats-first/grpc-gen/main.pb.go"
 	nats "github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/encoders/protobuf"
 )
 
 var (
+	name = flag.String("name", "ville", "name for Greet protobuf message")
 	json = flag.Bool("json", false, "use JSON_ENCODER instead of PROTOBUF_ENCODER")
 )
 
@@ -56,13 +56,13 @@ func main() {
 }
 
 func doProtobuf(ec *nats.EncodedConn) {
-	recvCh := make(chan *person)
+	recvCh := make(chan *GreetReply)
 	ec.BindRecvChan("hello", recvCh)
 
-	sendCh := make(chan *person)
+	sendCh := make(chan *GreetRequest)
 	ec.BindSendChan("hello", sendCh)
 
-	me := &pb.GreetRequest{Name:"tero"}
+	me := &GreetRequest{Name:*name}
 
 	sendCh <- me
 
