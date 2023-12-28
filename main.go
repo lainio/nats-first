@@ -12,8 +12,9 @@ import (
 )
 
 var (
-	name = flag.String("name", "ville", "name for Greet protobuf message")
-	json = flag.Bool("json", false, "use JSON_ENCODER instead of PROTOBUF_ENCODER")
+	name      = flag.String("name", "ville", "name for Greet protobuf message")
+	json      = flag.Bool("json", false, "use JSON_ENCODER instead of PROTOBUF_ENCODER")
+	publisher = flag.Bool("pub", false, "is publisher or if not THEN subscriber")
 )
 
 // EncodedConn can Publish any raw Go type using the registered Encoder
@@ -55,23 +56,56 @@ func main() {
 	}
 }
 
-func doProtobuf(ec *nats.EncodedConn) {
-	recvCh := make(chan *GreetReply)
-	ec.BindRecvChan("hello", recvCh)
+func doProtobuf(ec *nats.EncodedConn) (err error) {
+	defer err2.Handle(&err)
 
-	sendCh := make(chan *GreetRequest)
-	ec.BindSendChan("hello", sendCh)
-
-	me := &GreetRequest{Name:*name}
-
-	sendCh <- me
-
-	who := <-recvCh
-
-	glog.Infoln(who)
+	if *publisher {
+		return doProtobufAsPub(ec)
+	}
+	return doProtobufAsSub(ec)
 }
 
-func doJson(ec *nats.EncodedConn) {
+func doProtobufAsPub(ec *nats.EncodedConn) (err error) {
+	defer err2.Handle(&err)
+
+	glog.Infoln("doProtobufAsPub")
+
+	sendCh := make(chan *GreetRequest)
+	try.To(ec.BindSendChan("hello", sendCh))
+
+	for i := 0; i < 10; i++ {
+		stop := i == 9
+		me := &GreetRequest{Name: *name, Stop: stop}
+		sendCh <- me
+	}
+	glog.Infoln("done pub")
+
+	return nil
+}
+
+func doProtobufAsSub(ec *nats.EncodedConn) (err error) {
+	defer err2.Handle(&err)
+
+	glog.Infoln("doProtobufAsSub")
+
+	recvCh := make(chan *GreetRequest)
+	try.To1(ec.BindRecvChan("hello", recvCh))
+
+	for {
+		who := <-recvCh
+		if who.Stop {
+			break
+		}
+		glog.Infoln(who)
+	}
+	glog.Infoln("done sub")
+
+	return nil
+}
+
+func doJson(ec *nats.EncodedConn) (err error) {
+	defer err2.Handle(&err)
+
 	recvCh := make(chan *person)
 	ec.BindRecvChan("hello", recvCh)
 
@@ -85,4 +119,5 @@ func doJson(ec *nats.EncodedConn) {
 	who := <-recvCh
 
 	glog.Infoln(who)
+	return nil
 }
