@@ -6,6 +6,7 @@
 
   message GreetRequest {
     string name = 1;
+    bool stop = 2;
   }
 
   message GreetReply {
