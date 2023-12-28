@@ -139,6 +139,7 @@ protoc_all: protoc
 
 protoc:	protoc_main
 
+# TODO: start using sym link and finally we get rid of: writing gRPC stuff to main pkg
 protoc_main:
 	@echo "compiling main IDL"
 	@protoc --proto_path=$(IDL_PATH) --go_out=$(OUT_PATH) --go-grpc_out=$(OUT_PATH) main.proto
