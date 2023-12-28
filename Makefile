@@ -137,10 +137,12 @@ OUT_PATH ?= grpc-gen
 
 protoc_all: protoc
 
-protoc:	protoc_protocol
+protoc:	protoc_main
 
-protoc_protocol:
-	protoc --proto_path=$(IDL_PATH) --go_out=$(OUT_PATH) --go-grpc_out=$(OUT_PATH) main.proto
+protoc_main:
+	@echo "compiling main IDL"
+	@protoc --proto_path=$(IDL_PATH) --go_out=$(OUT_PATH) --go-grpc_out=$(OUT_PATH) main.proto
+	@cp $(OUT_PATH)/main.pb.go .
 
 .PHONY:	check
 
