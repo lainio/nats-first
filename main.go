@@ -2,7 +2,9 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/lainio/err2"
@@ -54,6 +56,7 @@ func main() {
 	} else {
 		doProtobuf(ec)
 	}
+	time.Sleep(200 * time.Millisecond)
 }
 
 func doProtobuf(ec *nats.EncodedConn) (err error) {
@@ -73,12 +76,16 @@ func doProtobufAsPub(ec *nats.EncodedConn) (err error) {
 	sendCh := make(chan *GreetRequest)
 	try.To(ec.BindSendChan("hello", sendCh))
 
-	for i := 0; i < 10; i++ {
-		stop := i == 9
-		me := &GreetRequest{Name: *name, Stop: stop}
+	var i int
+	for i = 0; i < 10; i++ {
+		//stop := i == 9
+		stop := false
+		s := fmt.Sprintf("%s_%d", *name, i)
+		fmt.Println("name:", s)
+		me := &GreetRequest{Name: s, Stop: stop}
 		sendCh <- me
 	}
-	glog.Infoln("done pub")
+	glog.Infoln("done pub, i =", i)
 
 	return nil
 }
@@ -93,10 +100,10 @@ func doProtobufAsSub(ec *nats.EncodedConn) (err error) {
 
 	for {
 		who := <-recvCh
+		glog.Infoln(who)
 		if who.Stop {
 			break
 		}
-		glog.Infoln(who)
 	}
 	glog.Infoln("done sub")
 
