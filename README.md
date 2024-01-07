@@ -6,3 +6,12 @@ Includes both server and client (pub/sub). Tries to find out how gRPC or
 ## The Error Handling
 
 We will study how error Handling is proceed with NATS.go.
+
+## Using NATS Tool
+
+You can listen all published messages with:
+
+```shell
+server sub '>'
+```
+
