@@ -17,6 +17,7 @@ var (
 	name      = flag.String("name", "ville", "name for Greet protobuf message")
 	json      = flag.Bool("json", false, "use JSON_ENCODER instead of PROTOBUF_ENCODER")
 	publisher = flag.Bool("pub", false, "is publisher or if not THEN subscriber")
+	stop      = flag.Bool("stop", false, "tells if we need to send stop at the end")
 )
 
 // EncodedConn can Publish any raw Go type using the registered Encoder
@@ -78,8 +79,8 @@ func doProtobufAsPub(ec *nats.EncodedConn) (err error) {
 
 	var i int
 	for i = 0; i < 10; i++ {
-		//stop := i == 9
-		stop := false
+		stop := *stop && i == 9
+		//stop := false
 		s := fmt.Sprintf("%s_%d", *name, i)
 		fmt.Println("name:", s)
 		me := &GreetRequest{Name: s, Stop: stop}
