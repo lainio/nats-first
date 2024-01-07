@@ -8,6 +8,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/lainio/err2"
+	_ "github.com/lainio/err2/assert"
 	"github.com/lainio/err2/try"
 	nats "github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/encoders/protobuf"
