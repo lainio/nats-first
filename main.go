@@ -11,6 +11,7 @@ import (
 	_ "github.com/lainio/err2/assert"
 	"github.com/lainio/err2/try"
 	greet "github.com/lainio/nats-first/grpc/greet/v1"
+	"github.com/lainio/nats-first/nconn"
 	nats "github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/encoders/protobuf"
 )
@@ -40,12 +41,11 @@ func main() {
 
 	flag.Parse()
 
-	nc := try.To1(nats.Connect(nats.DefaultURL))
 	codec := protobuf.PROTOBUF_ENCODER
 	if *json {
 		codec = nats.JSON_ENCODER
 	}
-	ec := try.To1(nats.NewEncodedConn(nc, codec))
+	ec := nconn.New(codec)
 	defer ec.Close()
 
 	type person struct {
@@ -55,9 +55,9 @@ func main() {
 	}
 
 	if *json {
-		try.To(doJSON(ec))
+		try.To(doJSON(ec.EncodedConn))
 	} else {
-		try.To(doProtobuf(ec))
+		try.To(doProtobuf(ec.EncodedConn))
 	}
 	time.Sleep(200 * time.Millisecond)
 }
