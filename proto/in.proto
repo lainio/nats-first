@@ -23,7 +23,8 @@ message Cmd {
   }
   Type type = 1;
 
-	string userName      = 2;
+	int64 cmdID = 2;
+	string text = 3;
 }
 
 // CmdStatus is structure to return cmd statuses.
