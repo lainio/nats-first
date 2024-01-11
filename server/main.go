@@ -8,9 +8,17 @@ import (
 	"github.com/findy-network/findy-common-go/rpc"
 	"github.com/golang/glog"
 	"github.com/lainio/err2"
+	"github.com/lainio/err2/assert"
 	_ "github.com/lainio/err2/assert" // we want an --asserter flag
+	"github.com/lainio/err2/try"
 	in "github.com/lainio/nats-first/grpc/in/v1"
+	"github.com/lainio/nats-first/nconn"
+	"github.com/nats-io/nats.go/encoders/protobuf"
 	"google.golang.org/grpc"
+)
+
+const (
+	CMD_SUBJECT = "cmd"
 )
 
 var (
@@ -36,13 +44,26 @@ func main() {
 		glog.V(3).Infof("starting gRPC server with\ncrt:\t%s\nkey:\t%s\nclient:\t%s",
 			pki.Server.CertFile, pki.Server.KeyFile, pki.Client.CertFile)
 	}
+
+	ec := nconn.New(protobuf.PROTOBUF_ENCODER)
+	sendCh := make(chan *in.Cmd, 1)
+	try.To(ec.BindSendChan(CMD_SUBJECT, sendCh))
+
+	recvCh := make(chan *in.Cmd, 1)
+	try.To1(ec.BindRecvChan(CMD_SUBJECT, recvCh))
+
 	rpc.Serve(&rpc.ServerCfg{
 		NoAuthorization: *noTLS,
 
 		Port: *port,
 		PKI:  pki,
 		Register: func(s *grpc.Server) error {
-			in.RegisterInServiceServer(s, &inService{Root: *user})
+			in.RegisterInServiceServer(s, &inService{
+				NConn:  ec,
+				Root:   *user,
+				inCmd:  recvCh,
+				outCmd: sendCh,
+			})
 			glog.V(10).Infoln("GRPC registration all done")
 			return nil
 		},
@@ -51,58 +72,54 @@ func main() {
 
 type inService struct {
 	in.UnimplementedInServiceServer
-	Root string
+
+	nconn.NConn
+
+	Root   string
+	outCmd chan *in.Cmd
+	inCmd  chan *in.Cmd
 }
 
 // ListenCmd implements v1.InServiceServer.
-func (d inService) ListenCmd(*in.Cmd, in.InService_ListenCmdServer) (err error) {
+func (d inService) ListenCmd(icmd *in.Cmd, server in.InService_ListenCmdServer) (err error) {
 	defer err2.Handle(&err)
+
+	glog.V(3).Infoln("start listen")
+
+	ctx := server.Context()
+	recvCh := make(<-chan *in.Cmd, 1)
+	try.To1(d.BindRecvChan(CMD_SUBJECT, recvCh))
+
+loop:
+	for {
+		select {
+		case <-ctx.Done():
+			glog.V(1).Infoln("done")
+			break loop
+		case cmd := <-recvCh:
+			glog.Infoln(cmd)
+			try.To(server.Send(&in.CmdStatus{CmdType: icmd.Type}))
+		}
+	}
 	return nil
 }
 
-func (d inService) EnterCmd(context.Context, *in.Cmd) (_ *in.CmdStatus, err error) {
+func (d inService) EnterCmd(_ context.Context, received *in.Cmd) (_ *in.CmdStatus, err error) {
 	defer err2.Handle(&err)
-	glog.V(1).Info("enter Enter()")
+
+	glog.V(1).Info("--- enter Enter()", received.CmdID, received.Text)
+	assert.CNotNil(d.outCmd)
+
+	d.outCmd <- received
+
 	return &in.CmdStatus{
-		CmdID:   0,
-		Type:    0,
-		CmdType: 0,
+		CmdID:   received.CmdID,
+		Type:    in.CmdStatus_STATUS,
+		CmdType: received.Type,
 		Info: &in.CmdStatus_Ok{
 			Ok: &in.CmdStatus_OKResult{
-				Data: "what",
+				Data: received.Text,
 			},
 		},
 	}, nil
 }
-
-/*
-func (d inService) Enter(ctx context.Context, cmd *in.Cmd) (cr *in.CmdReturn, err error) {
-	defer err2.Handle(&err)
-
-	glog.V(1).Info("enter Enter()")
-	if !*noTLS {
-		user := jwt.User(ctx)
-
-		if user != d.Root {
-			return &in.CmdReturn{Type: cmd.Type}, errors.New("access right")
-		}
-	}
-
-	glog.V(3).Infoln("dev ops cmd", cmd.Type)
-	cmdReturn := &in.CmdReturn{Type: cmd.Type}
-
-	switch cmd.Type {
-	case in.Cmd_PING:
-		response := fmt.Sprintf("%s, ping ok", "TEST")
-		cmdReturn.Response = &in.CmdReturn_Ping{Ping: response}
-	case in.Cmd_LOGGING:
-		//agencyCmd.ParseLoggingArgs(cmd.GetLogging())
-		//response = fmt.Sprintf("logging = %s", cmd.GetLogging())
-	case in.Cmd_COUNT:
-		response := fmt.Sprintf("%d/%d cloud agents",
-			100, 1000)
-		cmdReturn.Response = &in.CmdReturn_Ping{Ping: response}
-	}
-	return cmdReturn, nil
-}
-*/
