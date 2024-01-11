@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	user       = flag.String("user", "", "test user name")
+	user       = flag.String("user", "EMPTY", "test user name")
 	serverAddr = flag.String("addr", "localhost", "agency host gRPC address")
 	port       = flag.Int("port", 50051, "agency host gRPC port")
 	noTLS      = flag.Bool("no-tls", false, "do NOT use TLS and cert files (hard coded)")
@@ -43,9 +43,11 @@ func main() {
 
 	c := in.NewInServiceClient(conn)
 	r := try.To1(c.EnterCmd(ctx, &in.Cmd{
+		CmdID: 100,
 		Type: in.Cmd_ENTER,
+		Text: *user,
 	}))
-	fmt.Println("result:", r.GetOk().GetData())
+	fmt.Println("result:", r.CmdID, r.GetOk().GetData())
 }
 
 func newClient(user, addr string) (conn *grpc.ClientConn, err error) {
