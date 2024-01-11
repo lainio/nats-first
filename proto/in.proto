@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+// tells where the package will be. See makefile and PWD/../../..
+option go_package = "github.com/lainio/nats-first/grpc/in/v1";
+
+// Package in.v1 is the first version ...
+package in.v1;
+
+/*
+InService offers ...
+ */
+service InService {
+  rpc ListenCmd(Cmd) returns (stream CmdStatus) {}
+
+  rpc EnterCmd(Cmd) returns (CmdStatus) {}
+
+}
+
+message Cmd {
+  enum Type {
+    ENTER = 0;
+    LISTEN = 1;
+  }
+  Type type = 1;
+
+	string userName      = 2;
+}
+
+// CmdStatus is structure to return cmd statuses.
+message CmdStatus {
+	int64 cmdID = 1;
+	enum Type {
+		STATUS = 0;
+		READY_OK = 1;
+		READY_ERR = 2;
+	}
+	Type type = 2;
+
+  Cmd.Type cmd_type = 3;
+
+  message OKResult {
+    string data = 1;
+  }
+  oneof Info {
+		OKResult ok = 4;
+		string err = 5;
+  }
+}
+
+

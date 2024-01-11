@@ -130,20 +130,19 @@ lint:
 
 # --- Protoc ----
 
-SRC_ROOT=$(GOPATH)/src
+# SRC_ROOT=$(GOPATH)/src
 IDL_PATH=./proto
 
-OUT_PATH ?= grpc-gen
+OUT_PATH ?= grpc/
+SRC_ROOT=$(PWD)/../../..
 
-protoc_all: protoc
+protoc_all: protoc_greet protoc_in
 
-protoc:	protoc_main
+protoc_greet:
+	protoc --proto_path=$(IDL_PATH) --go_out=$(SRC_ROOT) --go-grpc_out=$(SRC_ROOT) greet.proto
 
-# TODO: start using sym link and finally we get rid of: writing gRPC stuff to main pkg
-protoc_main:
-	@echo "compiling main IDL"
-	@protoc --proto_path=$(IDL_PATH) --go_out=$(OUT_PATH) --go-grpc_out=$(OUT_PATH) main.proto
-	@cp $(OUT_PATH)/main.pb.go .
+protoc_in:
+	protoc --proto_path=$(IDL_PATH) --go_out=$(SRC_ROOT) --go-grpc_out=$(SRC_ROOT) in.proto
 
 .PHONY:	check
 

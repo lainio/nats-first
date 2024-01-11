@@ -1,0 +1,15 @@
+  syntax = "proto3";
+
+// tells where the package will be. See makefile and PWD/../../..
+option go_package = "github.com/lainio/nats-first/grpc/greet/v1";
+
+package in.Greet;
+
+message Request {
+  string name = 1;
+  bool stop = 2;
+}
+
+message Reply {
+  string text = 1;
+}

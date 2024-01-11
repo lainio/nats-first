@@ -10,12 +10,13 @@ import (
 	"github.com/lainio/err2"
 	_ "github.com/lainio/err2/assert"
 	"github.com/lainio/err2/try"
+	greet "github.com/lainio/nats-first/grpc/greet/v1"
 	nats "github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/encoders/protobuf"
 )
 
 var (
-	name      = flag.String("name", "ville", "name for Greet protobuf message")
+	name      = flag.String("name", "ville", "name for greet. protobuf message")
 	json      = flag.Bool("json", false, "use JSON_ENCODER instead of PROTOBUF_ENCODER")
 	publisher = flag.Bool("pub", false, "is publisher or if not THEN subscriber")
 	stop      = flag.Bool("stop", false, "tells if we need to send stop at the end")
@@ -54,9 +55,9 @@ func main() {
 	}
 
 	if *json {
-		doJson(ec)
+		try.To(doJSON(ec))
 	} else {
-		doProtobuf(ec)
+		try.To(doProtobuf(ec))
 	}
 	time.Sleep(200 * time.Millisecond)
 }
@@ -75,7 +76,7 @@ func doProtobufAsPub(ec *nats.EncodedConn) (err error) {
 
 	glog.Infoln("doProtobufAsPub")
 
-	sendCh := make(chan *GreetRequest)
+	sendCh := make(chan *greet.Request)
 	try.To(ec.BindSendChan("hello", sendCh))
 
 	var i int
@@ -84,7 +85,7 @@ func doProtobufAsPub(ec *nats.EncodedConn) (err error) {
 		//stop := false
 		s := fmt.Sprintf("%s_%d", *name, i)
 		fmt.Println("name:", s)
-		me := &GreetRequest{Name: s, Stop: stop}
+		me := &greet.Request{Name: s, Stop: stop}
 		sendCh <- me
 	}
 	glog.Infoln("done pub, i =", i)
@@ -97,7 +98,7 @@ func doProtobufAsSub(ec *nats.EncodedConn) (err error) {
 
 	glog.Infoln("doProtobufAsSub")
 
-	recvCh := make(chan *GreetRequest)
+	recvCh := make(chan *greet.Request)
 	try.To1(ec.BindRecvChan("hello", recvCh))
 
 	for {
@@ -112,14 +113,14 @@ func doProtobufAsSub(ec *nats.EncodedConn) (err error) {
 	return nil
 }
 
-func doJson(ec *nats.EncodedConn) (err error) {
+func doJSON(ec *nats.EncodedConn) (err error) {
 	defer err2.Handle(&err)
 
 	recvCh := make(chan *person)
-	ec.BindRecvChan("hello", recvCh)
+	try.To1(ec.BindRecvChan("hello", recvCh))
 
 	sendCh := make(chan *person)
-	ec.BindSendChan("hello", sendCh)
+	try.To(ec.BindSendChan("hello", sendCh))
 
 	me := &person{Name: "derek", Age: 22, Address: "140 New Montgomery Street"}
 
